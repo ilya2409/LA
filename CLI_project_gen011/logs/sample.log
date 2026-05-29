@@ -1,0 +1,8 @@
+2025-05-28 10:15:23,001 - INFO - Application started successfully
+2025-05-28 10:16:05,123 - DEBUG - Loading configuration from config.json
+2025-05-28 10:16:10,456 - WARNING - Deprecated setting 'use_ssl' found
+2025-05-28 10:17:22,789 - ERROR - Database connection failed: timeout
+2025-05-28 10:18:30,000 - INFO - Retry attempt 1
+2025-05-28 10:19:45,111 - CRITICAL - Unable to recover, shutting down
+2025-05-28 10:20:00,222 - ERROR - Failed to send alert email
+2025-05-28 10:20:15,333 - INFO - Clean shutdown complete

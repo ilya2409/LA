@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Log Analyzer</title>
+    <style>
+        :root {
+            --bg-body: #f6f8fa;
+            --bg-card: #ffffff;
+            --text-primary: #1f2328;
+            --text-secondary: #57606a;
+            --border: #d0d7de;
+            --accent: #0969da;
+            --success: #2da44e;
+        }
+        body.dark {
+            --bg-body: #0d1117;
+            --bg-card: #161b22;
+            --text-primary: #c9d1d9;
+            --text-secondary: #8b949e;
+            --border: #30363d;
+            --accent: #58a6ff;
+            --success: #238636;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+            background-color: var(--bg-body);
+            color: var(--text-primary);
+            padding: 2rem 1rem;
+        }
+        .container {
+            max-width: 1280px;
+            margin: 0 auto;
+            background: var(--bg-card);
+            border-radius: 16px;
+            overflow: hidden;
+        }
+        .header {
+            padding: 1.5rem 2rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+        .header h1::before { content: "📊"; margin-right: 0.5rem; }
+        .btn-group {
+            display: flex;
+            gap: 0.75rem;
+        }
+        .theme-toggle, .save-history-btn {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            color: var(--text-primary);
+            padding: 0.3rem 0.8rem;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+        .save-history-btn {
+            background-color: var(--accent);
+            color: white;
+            border-color: var(--accent);
+        }
+        .content { padding: 2rem; }
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 1rem;
+        }
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+        }
+        input, select, button {
+            font-family: inherit;
+            font-size: 0.9rem;
+            padding: 0.5rem 0.75rem;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: var(--bg-card);
+            color: var(--text-primary);
+        }
+        button {
+            background-color: var(--success);
+            color: white;
+            cursor: pointer;
+        }
+        .result-area {
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .result-header {
+            background: var(--bg-body);
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border);
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        .result-content {
+            padding: 1rem;
+            max-height: 600px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 0.85rem;
+            white-space: pre-wrap;
+            background: var(--bg-card);
+            color: var(--text-primary);
+        }
+        .result-content pre {
+            margin: 0;
+            font-family: inherit;
+            color: inherit;
+            background: transparent;
+        }
+        .log-line-error { color: #f85149; }
+        .log-line-warning { color: #e3b341; }
+        .ai-summary {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: var(--bg-body);
+            border-radius: 8px;
+            color: var(--text-primary);
+        }
+        .loader { display: none; margin-left: 1rem; }
+        .error { color: #cf222e; background: #ffebe9; padding: 0.75rem; border-radius: 8px; }
+        .warn { color: #9a6700; background: #fff8c5; padding: 0.75rem; border-radius: 8px; }
+        footer {
+            text-align: center;
+            padding: 1rem;
+            border-top: 1px solid var(--border);
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+        @media (max-width: 680px) {
+            .header { flex-direction: column; align-items: start; }
+            .btn-group { align-self: flex-end; }
+            .content { padding: 1rem; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>Log Analyzer</h1>
+        <div class="btn-group">
+            <button class="save-history-btn" id="saveHistoryBtn">Сохранить историю</button>
+            <button class="theme-toggle" id="themeToggle">Тёмная</button>
+        </div>
+    </div>
+    <div class="content">
+        <div class="card">
+            <form id="uploadForm" enctype="multipart/form-data">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>📁 Лог-файл</label>
+                        <input type="file" id="logfile" name="file" accept=".log,.txt" required>
+                    </div>
+                    <div class="form-group">
+                        <label>⚡ Уровень (min)</label>
+                        <select id="level">
+                            <option value="">Все</option><option>DEBUG</option><option>INFO</option>
+                            <option>WARNING</option><option>ERROR</option><option>CRITICAL</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>🔍 Ключевое слово</label>
+                        <input type="text" id="keyword" placeholder="timeout, failed">
+                    </div>
+                    <div class="form-group">
+                        <label>Дата с</label>
+                        <input type="date" id="from_date">
+                    </div>
+                    <div class="form-group">
+                        <label>Дата по</label>
+                        <input type="date" id="to_date">
+                    </div>
+                    <div class="form-group" style="flex-direction: row; align-items: center;">
+                        <input type="checkbox" id="stats_only">
+                        <label>📈 Только статистика</label>
+                    </div>
+                </div>
+                <button type="submit" style="margin-top: 1rem;">Анализировать</button>
+                <span class="loader" id="loader">⏳ обработка...</span>
+            </form>
+        </div>
+        <div id="resultContainer" class="result-area" style="display: none;">
+            <div class="result-header">📋 Результат</div>
+            <div class="result-content" id="resultContent"></div>
+        </div>
+    </div>
+    <footer>МТУСИ · AI · Log Analyzer</footer>
+</div>
+
+<script>
+    (function(){
+        // === Управление темой ===
+        const body = document.body;
+        const themeToggle = document.getElementById('themeToggle');
+        if(localStorage.theme === 'dark') {
+            body.classList.add('dark');
+            themeToggle.textContent = 'Светлая';
+        } else {
+            themeToggle.textContent = 'Тёмная';
+        }
+        themeToggle.onclick = () => {
+            body.classList.toggle('dark');
+            const isDark = body.classList.contains('dark');
+            localStorage.theme = isDark ? 'dark' : 'light';
+            themeToggle.textContent = isDark ? 'Светлая' : 'Тёмная';
+        };
+
+        // === Хранилище истории (максимум 10 записей) ===
+        let history = [];
+        try {
+            const saved = localStorage.getItem('log_analyzer_history');
+            if(saved) history = JSON.parse(saved);
+            if(!Array.isArray(history)) history = [];
+        } catch(e) { history = []; }
+
+        function addToHistory(entry) {
+            history.unshift(entry);      // новые в начало
+            if(history.length > 10) history.pop();
+            localStorage.setItem('log_analyzer_history', JSON.stringify(history));
+        }
+
+        // === Кнопка сохранения истории в TXT ===
+        document.getElementById('saveHistoryBtn').addEventListener('click', () => {
+            if(history.length === 0) {
+                alert("История пуста. Сначала выполните хотя бы один анализ.");
+                return;
+            }
+            let content = "LOG ANALYZER HISTORY\n";
+            content += "=".repeat(60) + "\n";
+            content += `Всего сохранено анализов: ${history.length}\n`;
+            content += "=".repeat(60) + "\n\n";
+            
+            history.forEach((item, idx) => {
+                content += `[АНАЛИЗ №${idx+1}]\n`;
+                content += `Дата: ${item.date}\n`;
+                content += `Файл: ${item.filename}\n`;
+                if(item.filters) content += `🔧 Фильтры: ${item.filters}\n`;
+                content += `\nРЕЗУЛЬТАТ:\n${item.resultText}\n`;
+                if(item.aiSummary) {
+                    content += `\nИИ СВОДКА:\n${item.aiSummary}\n`;
+                }
+                content += "\n" + "─".repeat(60) + "\n\n";
+            });
+            
+            const blob = new Blob([content], {type: "text/plain;charset=utf-8"});
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.href = url;
+            link.download = `log_history_${new Date().toISOString().slice(0,19).replace(/:/g, '-')}.txt`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        });
+
+        // === Основной анализ ===
+        const form = document.getElementById('uploadForm');
+        const loader = document.getElementById('loader');
+        const resultContainer = document.getElementById('resultContainer');
+        const resultContent = document.getElementById('resultContent');
+        
+        async function getAISummary(logText) {
+            if (!logText || logText === "Нет записей по заданным фильтрам.") return null;
+            try {
+                const fd = new FormData();
+                fd.append('log_text', logText);
+                fd.append('model_name', 'gemma4:e2b');
+                const resp = await fetch('/ai-summary', { method: 'POST', body: fd });
+                if (!resp.ok) return null;
+                const data = await resp.json();
+                return data.summary;
+            } catch(e) { console.error(e); return null; }
+        }
+        
+        form.onsubmit = async (e) => {
+            e.preventDefault();
+            resultContainer.style.display = 'none';
+            resultContent.innerHTML = '';
+            loader.style.display = 'inline';
+            
+            const fileInput = document.getElementById('logfile');
+            const file = fileInput.files[0];
+            if (!file) { showError('Выберите файл'); loader.style.display = 'none'; return; }
+            const originalFilename = file.name;
+            
+            try {
+                // Upload
+                const uploadFD = new FormData();
+                uploadFD.append('file', file);
+                const uploadResp = await fetch('/upload', { method: 'POST', body: uploadFD });
+                if(uploadResp.status === 429) { const err = await uploadResp.json(); showWarn(err.detail || 'Слишком много запросов. Подождите 10 секунд.'); loader.style.display = 'none'; return; }
+                if(!uploadResp.ok) throw new Error(`Upload error ${uploadResp.status}`);
+                const { filename } = await uploadResp.json();
+                
+                // Параметры фильтрации
+                const level = document.getElementById('level').value;
+                const keyword = document.getElementById('keyword').value;
+                const from_date = document.getElementById('from_date').value;
+                const to_date = document.getElementById('to_date').value;
+                const stats_only = document.getElementById('stats_only').checked;
+                
+                const analyzeFD = new FormData();
+                analyzeFD.append('filename', filename);
+                if(level) analyzeFD.append('level', level);
+                if(keyword) analyzeFD.append('keyword', keyword);
+                if(from_date) analyzeFD.append('from_date', from_date);
+                if(to_date) analyzeFD.append('to_date', to_date);
+                if(stats_only) analyzeFD.append('stats_only', 'true');
+                
+                const analyzeResp = await fetch('/analyze', { method: 'POST', body: analyzeFD });
+                if(analyzeResp.status === 429) { const err = await analyzeResp.json(); showWarn(err.detail || 'Слишком много запросов. Подождите 10 секунд.'); loader.style.display = 'none'; return; }
+                if(!analyzeResp.ok) throw new Error(`Analyze error ${analyzeResp.status}`);
+                const data = await analyzeResp.json();
+                let raw = data.result;
+                if(!data.is_stats) {
+                    raw = raw.replace(/ - ERROR - /g, ' - <span class="log-line-error">ERROR</span> - ');
+                    raw = raw.replace(/ - CRITICAL - /g, ' - <span class="log-line-error">CRITICAL</span> - ');
+                    raw = raw.replace(/ - WARNING - /g, ' - <span class="log-line-warning">WARNING</span> - ');
+                }
+                // Отображаем результат (без HTML-тегов внутри текста, только span'ы)
+                resultContent.innerHTML = `<pre style="margin:0; font-family:inherit;">${escapeHtml(raw)}</pre>`;
+                resultContainer.style.display = 'block';
+                
+                // ИИ сводка
+                let aiText = null;
+                if(!stats_only && raw && raw !== "Нет записей по заданным фильтрам.") {
+                    const summary = await getAISummary(raw);
+                    if(summary) {
+                        aiText = summary;
+                        const aiDiv = document.createElement('div');
+                        aiDiv.className = 'ai-summary';
+                        aiDiv.innerHTML = `<div style="display:flex; align-items:center; gap:0.5rem;"><strong>ИИ сводка</strong></div><div style="font-size:0.9rem;">${escapeHtml(summary)}</div>`;
+                        resultContent.parentElement.appendChild(aiDiv);
+                    }
+                }
+                
+                // Сохраняем в историю (используем "сырой" текст без HTML-тегов)
+                const plainResult = data.result; // уже без span'ов
+                const filters = [];
+                if(level) filters.push(`уровень ≥ ${level}`);
+                if(keyword) filters.push(`поиск: ${keyword}`);
+                if(from_date || to_date) filters.push(`дата: ${from_date || '…'} — ${to_date || '…'}`);
+                if(stats_only) filters.push(`только статистика`);
+                const filterStr = filters.length ? filters.join(', ') : 'нет';
+                
+                addToHistory({
+                    date: new Date().toLocaleString(),
+                    filename: originalFilename,
+                    filters: filterStr,
+                    resultText: plainResult,
+                    aiSummary: aiText || '—'
+                });
+                
+            } catch(e) { showError(e.message); }
+            finally { loader.style.display = 'none'; }
+        };
+        
+        function escapeHtml(str) { return str.replace(/[&<>]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;'})[m]); }
+        function showError(msg) { resultContent.innerHTML = `<div class="error">[ERROR] ${escapeHtml(msg)}</div>`; resultContainer.style.display = 'block'; }
+        function showWarn(msg) { resultContent.innerHTML = `<div class="warn">[WARNING] ${escapeHtml(msg)}</div>`; resultContainer.style.display = 'block'; }
+    })();
+</script>
+</body>
+</html>
