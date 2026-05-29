@@ -9,6 +9,7 @@ from fastapi.responses import HTMLResponse
 from starlette.status import HTTP_413_REQUEST_ENTITY_TOO_LARGE
 import ollama
 from ollama import Client
+from fastapi.staticfiles import StaticFiles
 
 # Импорт slowapi
 from slowapi import Limiter, _rate_limit_exceeded_handler
@@ -23,6 +24,7 @@ from analyzer.models import LogLevel
 from analyzer.stats import get_summary, format_summary
 
 app = FastAPI(title="Log Analyzer Web", description="Анализатор логов с ограничением запросов")
+app.mount("/static", StaticFiles(directory=str(Path(__file__).parent / "static")), name="static")
 
 # Настройка лимитера (хранилище в памяти)
 limiter = Limiter(key_func=get_remote_address)
