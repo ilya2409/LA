@@ -1,0 +1,27 @@
+/* Градиентный фон для всей страницы */
+body {
+    background: linear-gradient(135deg, #2b6c91 0%, #b0e57c 100%);
+    background-attachment: fixed; /* чтобы градиент не обрезался при прокрутке */
+    margin: 0;
+    padding: 2rem 1rem;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    color: var(--text-primary);
+}
+
+/* Контейнер с белым фоном и тенью – для читаемости карточек */
+.container {
+    background: rgba(255, 255, 255, 0.92);
+    backdrop-filter: blur(2px);
+    border-radius: 16px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+    overflow: hidden;
+}
+
+/* При тёмной теме делаем контейнер полупрозрачным тёмным */
+body.dark .container {
+    background: rgba(22, 27, 34, 0.92);
+    backdrop-filter: blur(2px);
+}
+
+/* Остальные стили (темы, карточки, кнопки) остаются как в index.html */
+/* Можно оставить без изменений, так как они уже определены в style блоке index.html */
